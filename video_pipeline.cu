@@ -4,6 +4,8 @@
 #include <opencv2/opencv.hpp>
 #include <cuda_runtime.h>
 
+#include "sobel.h"
+
 #define CUDA_CHECK(call) do {                                      \
     cudaError_t err = (call);                                      \
     if (err != cudaSuccess) {                                      \
@@ -13,14 +15,6 @@
     }                                                              \
 } while(0)
 
-//-----kernel
-__global__ void copy_kernel(const unsigned char* in, unsigned char* out, int n) { 
-    int idx = blockIdx.x * blockDim.x + threadIdx.x; 
-    if (idx < n) {
-        out[idx] = in[idx];
-    }
-}
-//----------
 
 int computeNumberBlocks(int n_elems, int n_threads){
     if(n_elems % n_threads == 0){
@@ -81,8 +75,6 @@ int main(){
     CUDA_CHECK(cudaMalloc((void**)&buffer_device_in, nbytes));
     CUDA_CHECK(cudaMalloc((void**)&buffer_device_out, nbytes));
 
-    int threads = 256;
-    int blocks = computeNumberBlocks(n_elements, threads);
 
     //now , we have acquired the properties of the frames of this video source
     //we can continue with the true elaboration
@@ -110,9 +102,9 @@ int main(){
         //do the copy of the frame from HOST to DEVICE
         CUDA_CHECK(cudaMemcpy(buffer_device_in, buffer_host_in, nbytes, cudaMemcpyHostToDevice));
 
-        //kernel launch
-        copy_kernel<<<blocks, threads>>>(buffer_device_in, buffer_device_out, n_elements);
-        CUDA_CHECK(cudaGetLastError());
+        //execution edge_detection_sobel kernel
+        run_edge_detection_sobel(buffer_device_in, buffer_device_out, w, h, 50);
+        
 
         //do the copy of the elaborated frame from DEVICE to HOST
         CUDA_CHECK(cudaMemcpy(buffer_host_out, buffer_device_out, nbytes, cudaMemcpyDeviceToHost));
