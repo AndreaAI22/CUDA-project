@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <opencv2/opencv.hpp>
 #include <cuda_runtime.h>
+#include <iostream>
 
 #include "sobel.h"
 
@@ -25,7 +26,25 @@ int computeNumberBlocks(int n_elems, int n_threads){
 }
 
 
+
 int main(){
+
+    int roi_x = 300;
+    int roi_y = 300;
+    int roi_width = 800;
+    int roi_height = 400;
+
+    int current_width;
+    int current_height;
+
+    size_t nbytes_out = 0;
+
+
+    //get the input to decide which operations must be execute
+    int code_operation = 0;
+    std::printf("Select the operation: \n");
+    std::printf("Edge Detection (Sobel) = 1\nCrop = 2\nScale = 3\n -->  ");
+    std::cin >> code_operation;
 
     //connection to the video source (in this case is webcam)
     cv::VideoCapture cap(0);
@@ -61,10 +80,35 @@ int main(){
     //in this context where the format pixel is grayscale , 1 pixel(element) = 1 byte
     int n_elements = (int)nbytes;
 
+
+    if(code_operation == 1){
+        //the user chooses Edge Detection
+        current_width = w;
+        current_height = h;
+        nbytes_out = nbytes;
+
+    }
+    else if(code_operation == 2){
+        //the user chooses Crop
+        current_width = roi_width;
+        current_height = roi_height;
+        nbytes_out = current_width * current_height;
+    }
+    else if(code_operation == 3){
+        //the user chooses Scale
+        current_width = w/3;
+        current_height = h/3;
+        nbytes_out = current_width * current_height ;
+    }else{
+        //invalid operation
+        std::fprintf(stderr, "ERROR: Invalid OPeration\n");
+        return 1;
+    }
+
     unsigned char* buffer_host_in = frame_grayscale.data;
 
     //allocate buffer host for output and the two buffer in device(GPU)
-    unsigned char* buffer_host_out = (unsigned char*) malloc(nbytes);
+    unsigned char* buffer_host_out = (unsigned char*) malloc(nbytes_out);
     if(buffer_host_out == nullptr){
         std::fprintf(stderr, "Error: malloc failed!\n");
         return 1;
@@ -73,11 +117,7 @@ int main(){
     unsigned char* buffer_device_in = nullptr;
     unsigned char* buffer_device_out = nullptr;
     CUDA_CHECK(cudaMalloc((void**)&buffer_device_in, nbytes));
-    CUDA_CHECK(cudaMalloc((void**)&buffer_device_out, nbytes));
-
-
-    //now , we have acquired the properties of the frames of this video source
-    //we can continue with the true elaboration
+    CUDA_CHECK(cudaMalloc((void**)&buffer_device_out, nbytes_out));
 
     while(true){
 
@@ -102,14 +142,18 @@ int main(){
         //do the copy of the frame from HOST to DEVICE
         CUDA_CHECK(cudaMemcpy(buffer_device_in, buffer_host_in, nbytes, cudaMemcpyHostToDevice));
 
-        //execution edge_detection_sobel kernel
-        run_edge_detection_sobel(buffer_device_in, buffer_device_out, w, h, 50);
-        
+        if (code_operation == 1) {
+            run_edge_detection_sobel(buffer_device_in, buffer_device_out, w, h, 50);
+        } else if (code_operation == 2) {
+            run_crop_kernel(buffer_device_in, buffer_device_out, roi_x, roi_y, roi_width, roi_height, w, h);
+        }else if (code_operation == 3) {
+            run_scale_kernel(buffer_device_in, buffer_device_out, current_width, current_height, w, h);
+        }
 
         //do the copy of the elaborated frame from DEVICE to HOST
-        CUDA_CHECK(cudaMemcpy(buffer_host_out, buffer_device_out, nbytes, cudaMemcpyDeviceToHost));
+        CUDA_CHECK(cudaMemcpy(buffer_host_out, buffer_device_out, nbytes_out, cudaMemcpyDeviceToHost));
 
-        cv::Mat frame_output(h, w, CV_8UC1, buffer_host_out);
+        cv::Mat frame_output(current_height, current_width, CV_8UC1, buffer_host_out);
 
         //display to screen
         cv::imshow("Result ", frame_output);
