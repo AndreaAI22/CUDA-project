@@ -43,7 +43,7 @@ int main(){
     //get the input to decide which operations must be execute
     int code_operation = 0;
     std::printf("Select the operation: \n");
-    std::printf("Edge Detection (Sobel) = 1\nCrop = 2\nScale = 3\n -->  ");
+    std::printf("Edge Detection (Sobel) = 1\nCrop = 2\nScale = 3\nRotate = 4\n-->  ");
     std::cin >> code_operation;
 
     //connection to the video source (in this case is webcam)
@@ -99,6 +99,12 @@ int main(){
         current_width = w/3;
         current_height = h/3;
         nbytes_out = current_width * current_height ;
+    }
+    else if(code_operation == 4){
+        //the user chooses Rotate
+        current_width = w;
+        current_height = h;
+        nbytes_out = nbytes;
     }else{
         //invalid operation
         std::fprintf(stderr, "ERROR: Invalid OPeration\n");
@@ -148,6 +154,11 @@ int main(){
             run_crop_kernel(buffer_device_in, buffer_device_out, roi_x, roi_y, roi_width, roi_height, w, h);
         }else if (code_operation == 3) {
             run_scale_kernel(buffer_device_in, buffer_device_out, current_width, current_height, w, h);
+        }else if(code_operation == 4){
+            run_rotate_kernel(buffer_device_in, buffer_device_out, current_width, current_height, 180);
+        }else{
+            fprintf(stderr, "ERROR: Invalid operation!\n");
+            break;
         }
 
         //do the copy of the elaborated frame from DEVICE to HOST
