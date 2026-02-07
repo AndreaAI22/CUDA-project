@@ -2,18 +2,7 @@
 #include <stdint.h>
 #include <cstdio>
 #include <cstdlib>
-
 #include "sobel.h"
-
-#define CUDA_CHECK(call) do {                                      \
-    cudaError_t err = (call);                                      \
-    if (err != cudaSuccess) {                                      \
-        fprintf(stderr, "CUDA error %s:%d: %s\n",                  \
-                __FILE__, __LINE__, cudaGetErrorString(err));      \
-        std::exit(1);                                              \
-    }                                                              \
-} while(0)
-
 
 __global__ void edge_detection_kernel(const unsigned char* buffer_device_in, unsigned char* buffer_device_out, int width, int height, int limit){
 
@@ -30,7 +19,7 @@ __global__ void edge_detection_kernel(const unsigned char* buffer_device_in, uns
 
     //if the pixel is a border pixel then don't compute it 
     if (x == 0 || x == width-1 || y == 0 || y == height-1){
-        buffer_device_out[idx] = buffer_device_in[idx];
+        buffer_device_out[idx] = 0;
         return;
     }
 
@@ -46,7 +35,7 @@ __global__ void edge_detection_kernel(const unsigned char* buffer_device_in, uns
     int p01 = buffer_device_in[(y-1)*width + x];
     int p02 = buffer_device_in[(y-1)*width + (x+1)];
     int p10 = buffer_device_in[y*width + (x-1)];
-    int p11 = buffer_device_in[y*width + x];
+    //int p11 = buffer_device_in[y*width + x];
     int p12 = buffer_device_in[y*width + (x+1)];
     int p20 = buffer_device_in[(y+1)*width + (x-1)];
     int p21 = buffer_device_in[(y+1)*width + x];
@@ -56,6 +45,7 @@ __global__ void edge_detection_kernel(const unsigned char* buffer_device_in, uns
     int Gx = (-1 * p00) + (1 * p02) + (-2 * p10) + (2 * p12) + (-1 * p20) + (1 * p22);
     int Gy = (-1 * p00) + (-2 * p01) + (-1 * p02) + (1 * p20) + (2 * p21) + (1 * p22);
 
+    //value that indicates the strength of the edge
     int mag = abs(Gx) + abs(Gy);
 
     if (mag > 255){
