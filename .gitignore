@@ -2,3 +2,4 @@
 *.out
 *.png
 video_pipeline
+/build/
