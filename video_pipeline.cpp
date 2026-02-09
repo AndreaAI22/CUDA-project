@@ -47,11 +47,16 @@ int main(){
     std::cin >> code_operation;
 
     //connection to the video source (in this case is webcam)
-    cv::VideoCapture cap(0);
+    cv::VideoCapture cap("/home/andrea/cuda_project/street_car_video.mp4");
     if (cap.isOpened() == false){
         fprintf(stderr, "Error: the video source can't be open!\n");
         return 1;
     }
+
+    //add to menage correctly the stream video from file video.mp4
+    double fps = cap.get(cv::CAP_PROP_FPS);
+    if (fps <= 0 || fps != fps) fps = 30.0; // fallback se non disponibile
+    int delay_ms = (int)(1000.0 / fps);
 
     
     cv::Mat frame_original, frame_grayscale;
@@ -257,7 +262,7 @@ int main(){
         //display to screen
         cv::imshow("Result ", frame_output);
 
-        int key = cv::waitKey(1);
+        int key = cv::waitKey(delay_ms);
 
         //if the user press Esc then stop
         if(key == 27){
