@@ -25,6 +25,12 @@ int main(){
     float s = 0.0f;
     float theta = 0.0f;
 
+    //variable for scale operation
+    int output_width = 0;
+    int output_height = 0;
+    float scale_factor_x = 0;
+    float scale_factor_y = 0;
+
     //variables to establish the output frame dimension according to operation
     int current_width;
     int current_height;
@@ -119,9 +125,20 @@ int main(){
             break;
 
         case 3: //the user chooses Scale
-            current_width = w/3;
-            current_height = h/3;
-            nbytes_out = current_width * current_height ;
+            printf("\nInsert width output image --> ");
+            std::cin >> output_width;
+            if(output_width < 1) output_width = 1; //force to 1
+            if (output_width > 4096) output_width = 4096;
+            printf("\nInsert height output image --> ");
+            std::cin >> output_height;
+            if(output_height < 1) output_height = 1; //force to 1
+            if (output_height > 4096) output_height = 4096;
+
+            scale_factor_x = (float)w / (float)output_width;
+            scale_factor_y = (float)h / (float)output_height;
+            current_width = output_width;
+            current_height = output_height;
+            nbytes_out = (size_t)current_width * (size_t)current_height ;
             break;
 
         case 4: //the user chooses Rotate
@@ -144,7 +161,7 @@ int main(){
         case 5: //the user chooses Optical Flow
             current_width = w;
             current_height = h;
-            nbytes_out = nbytes;
+            nbytes_out = (size_t)current_width * (size_t)current_height * 3;
             break;
 
         default: //invalid operation
@@ -203,7 +220,7 @@ int main(){
                 break;
 
             case 3:
-                run_scale_kernel(buffer_device_in, buffer_device_out, current_width, current_height, w, h);
+                run_scale_kernel(buffer_device_in, buffer_device_out, current_width, current_height, w, h, scale_factor_x, scale_factor_y);
                 break;
 
             case 4:
@@ -226,7 +243,16 @@ int main(){
         //do the copy of the elaborated frame from DEVICE to HOST
         CUDA_CHECK(cudaMemcpy(buffer_host_out, buffer_device_out, nbytes_out, cudaMemcpyDeviceToHost));
 
-        cv::Mat frame_output(current_height, current_width, CV_8UC1, buffer_host_out);
+        cv::Mat frame_output;
+        cv::Mat hsv;
+        
+
+        if(code_operation != 5){
+            frame_output = cv::Mat(current_height, current_width, CV_8UC1, buffer_host_out);
+        }else{
+            hsv = cv::Mat(current_height, current_width, CV_8UC3, buffer_host_out);
+            cv::cvtColor(hsv, frame_output, cv::COLOR_HSV2BGR);
+        }
 
         //display to screen
         cv::imshow("Result ", frame_output);

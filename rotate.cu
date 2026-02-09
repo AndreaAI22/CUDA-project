@@ -52,7 +52,7 @@ void run_rotate_kernel(const unsigned char* buffer_device_in, unsigned char* buf
 
     dim3 block(16,16);
     dim3 grid((image_width + block.x - 1) / block.x, (image_height + block.y - 1) / block.y);
-    rotate_kernel<<<grid, block>>>(buffer_device_in, buffer_device_out, image_width, image_height, c, s);
+    rotate_kernel<<<grid, block>>>(buffer_device_in, buffer_device_out, image_width, image_height, c, s);   
     CUDA_CHECK(cudaGetLastError());
 
 }
