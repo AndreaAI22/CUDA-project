@@ -1,8 +1,6 @@
 #include <cuda_runtime.h>
-#include <cstdio>
-#include <cstdlib>
 #include <math.h>
-#include "sobel.h"
+#include "cuda_common.h"
 
 __global__ void rotate_kernel(const unsigned char* buffer_device_in, unsigned char* buffer_device_out, int image_width, int image_height, float c, float s){
 

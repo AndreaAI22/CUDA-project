@@ -2,9 +2,7 @@
 #include <opencv2/cudaoptflow.hpp>
 #include <opencv2/cudaarithm.hpp>
 #include <cuda_runtime.h>
-#include <cstdio>
-#include <cstdlib>
-#include "sobel.h"
+#include "cuda_common.h"
 
 void run_optical_flow(const unsigned char* buffer_current_frame, unsigned char* buffer_output_frame, int width, int heigth){
     

@@ -1,7 +1,5 @@
 #include <cuda_runtime.h>
-#include <cstdio>
-#include <cstdlib>
-#include "sobel.h"
+#include "cuda_common.h"
 
 __global__ void crop_kernel(const unsigned char* buffer_device_in, unsigned char* buffer_device_out, int roi_x, int roi_y, int roi_width, int roi_height, int image_width, int image_height){
 

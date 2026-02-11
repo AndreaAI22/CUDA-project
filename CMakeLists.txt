@@ -11,16 +11,19 @@ set(OpenCV_DIR "/usr/local/lib/cmake/opencv4")
 find_package(OpenCV REQUIRED)
 
 add_executable(app
-  video_pipeline.cpp
-  optical_flow.cu
-  crop.cu
-  edge_detection_sobel.cu
-  scale.cu
-  rotate.cu
+  src/video_pipeline.cpp
+  src/optical_flow.cu
+  src/crop.cu
+  src/edge_detection_sobel.cu
+  src/scale.cu
+  src/rotate.cu
 )
 
 target_link_libraries(app PRIVATE ${OpenCV_LIBS} cuda)
-target_include_directories(app PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_include_directories(app PRIVATE
+   ${OpenCV_INCLUDE_DIRS}
+   ${CMAKE_SOURCE_DIR}/include
+   )
 
 set_target_properties(app PROPERTIES
   CXX_STANDARD 17

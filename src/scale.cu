@@ -1,9 +1,7 @@
 #include <cuda_runtime.h>
 #include <stdint.h>
-#include <cstdio>
-#include <cstdlib>
 #include <math.h>
-#include "sobel.h"
+#include "cuda_common.h"
 
 __global__ void scale_kernel(const unsigned char* buffer_device_in, unsigned char* buffer_device_out, int out_width, int out_height, int in_width, int in_height, float scale_factor_x, float scale_factor_y){
 

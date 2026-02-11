@@ -1,8 +1,6 @@
 #include <cuda_runtime.h>
 #include <stdint.h>
-#include <cstdio>
-#include <cstdlib>
-#include "sobel.h"
+#include "cuda_common.h"
 
 __global__ void edge_detection_kernel(const unsigned char* buffer_device_in, unsigned char* buffer_device_out, int width, int height, int limit){
 

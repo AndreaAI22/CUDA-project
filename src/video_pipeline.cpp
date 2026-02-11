@@ -1,11 +1,9 @@
-#include <cstdio>
-#include <cstdlib>
 #include <cstddef>
 #include <opencv2/opencv.hpp>
 #include <cuda_runtime.h>
 #include <iostream>
 #include <math.h>
-#include "sobel.h"
+#include "cuda_common.h"
 
 int main(){
 
