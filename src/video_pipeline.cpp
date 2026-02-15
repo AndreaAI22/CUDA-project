@@ -38,6 +38,15 @@ int main(){
     int limit = 0; //threshold value for edge detection
 
 
+    //variables for optical flow new
+    bool initial_frame_bool = true;
+    int num_point_grid_x, num_point_grid_y, step, margin;
+    float* buff_out_optical_flow_host = nullptr;
+    float* buff_out_optical_flow_device = nullptr;
+    size_t size_buff_out;
+    cv::Point arrow;
+
+
     //get the input to decide which operations must be execute
     int code_operation = 0;
     printf("Select the operation: \n");
@@ -164,7 +173,25 @@ int main(){
         case 5: //the user chooses Optical Flow
             current_width = w;
             current_height = h;
-            nbytes_out = (size_t)current_width * (size_t)current_height * 3;
+            nbytes_out = nbytes;
+
+            step = 20;
+            margin = 5;
+
+            num_point_grid_x = floor((current_width - 2 * margin) / step) + 1;
+            num_point_grid_y = floor((current_height - 2 * margin) / step) + 1;
+
+            size_buff_out = (num_point_grid_x * num_point_grid_y) * 2;
+
+            //allocazione per output optical flow
+            buff_out_optical_flow_host = (float*) malloc(sizeof(float) * size_buff_out);
+            if(buff_out_optical_flow_host == nullptr){
+                fprintf(stderr, "Error: malloc failed!\n");
+                return 1;
+            }
+
+            CUDA_CHECK(cudaMalloc((void**)&buff_out_optical_flow_device, size_buff_out * sizeof(float)));
+
             break;
 
         default: //invalid operation
@@ -231,7 +258,11 @@ int main(){
                 break;
 
             case 5:
-                run_optical_flow(buffer_device_in, buffer_device_out, current_width, current_height);
+                //buffer_device_in è curr mentre buffer_device_out è prev
+                run_optical_flow_new(&initial_frame_bool, buffer_device_in, buffer_device_out, buff_out_optical_flow_device, nbytes, num_point_grid_x, num_point_grid_y, margin, step, current_width);
+                //devo invocare run_optical_flow_new passandogli la variabile bool initial_frame però come puntatore
+
+                //run_optical_flow(buffer_device_in, buffer_device_out, current_width, current_height);
                 break;
             
             default:
@@ -244,19 +275,40 @@ int main(){
         if(quit == true)    break;
 
         //do the copy of the elaborated frame from DEVICE to HOST
-        CUDA_CHECK(cudaMemcpy(buffer_host_out, buffer_device_out, nbytes_out, cudaMemcpyDeviceToHost));
-
-        cv::Mat frame_output;
-        cv::Mat hsv;
-        
-
         if(code_operation != 5){
-            frame_output = cv::Mat(current_height, current_width, CV_8UC1, buffer_host_out);
-        }else{
-            hsv = cv::Mat(current_height, current_width, CV_8UC3, buffer_host_out);
-            cv::cvtColor(hsv, frame_output, cv::COLOR_HSV2BGR);
+            CUDA_CHECK(cudaMemcpy(buffer_host_out, buffer_device_out, nbytes_out, cudaMemcpyDeviceToHost));
+        }else{ //optical flow 
+            CUDA_CHECK(cudaMemcpy(buffer_host_out, buffer_device_in, nbytes_out, cudaMemcpyDeviceToHost)); //buffer_device_in ancora dovrebbe essere curr
+            CUDA_CHECK(cudaMemcpy(buff_out_optical_flow_host, buff_out_optical_flow_device, size_buff_out*sizeof(float), cudaMemcpyDeviceToHost));
         }
 
+        cv::Mat frame_output;
+        frame_output = cv::Mat(current_height, current_width, CV_8UC1, buffer_host_out);
+
+        if(code_operation == 5){
+            int origin_x, origin_y, end_x, end_y, idx;
+            float component_x, component_y;
+            cv::Point origin, end;
+
+            for(int i=0; i < num_point_grid_x; i++){
+                for(int j=0; j < num_point_grid_y; j++){
+                    origin_x = margin + i * step;
+                    origin_y = margin + j * step;
+                    origin = cv::Point(origin_x, origin_y);
+                    idx = (i + j * num_point_grid_x) * 2;
+                    component_x = buff_out_optical_flow_host[idx];
+                    component_y = buff_out_optical_flow_host[idx+1];
+                    end_x = origin_x + (int)component_x;
+                    end_y = origin_y + (int)component_y;
+                    end = cv::Point(end_x, end_y);
+                    
+                    cv::arrowedLine(frame_output, origin, end, cv::Scalar(255), 1);
+
+                }
+            }
+        }
+
+        
         //display to screen
         cv::imshow("Result ", frame_output);
 
