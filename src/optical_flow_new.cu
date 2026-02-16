@@ -55,12 +55,12 @@ __global__ void optical_flow_new(unsigned char* prev, unsigned char* curr, float
     u = matrice_inversa[0] * (-D) + matrice_inversa[1] * (-E);
     v = matrice_inversa[2] * (-D) + matrice_inversa[3] * (-E);
 
-    //immagino che l'ouput generico dell'optical flow sia una matrice di float dove inserire u e v per ciascun punto della 
+    //immagino che l'output generico dell'optical flow sia una matrice di float dove inserire u e v per ciascun punto della 
     //griglia elaborato 
 
     idx_output = (index_thread_y * (blockDim.x * gridDim.x) + index_thread_x) * 2; // *2 in quanro l'output è float
-    ouput[idx_output] = u;
-    ouput[idx_output + 1] = v;
+    output[idx_output] = u;
+    output[idx_output + 1] = v;
     
 
 }
@@ -79,7 +79,7 @@ void run_optical_flow_new(bool* first_image, unsigned char* curr, unsigned char*
     dim3 block(16, 16);
     dim3 grid( (num_point_grid_x + block.x - 1) / block.x, (num_point_grid_y + block.y - 1) / block.y);
 
-    optical_flow_new<<<grid, block>>>(prev, curr, output, stride, num_point_grid_x, num_point_grid_y, margin, step);
+    optical_flow_new<<<grid, block>>>(prev, curr, output, stride, margin, step, num_point_grid_x, num_point_grid_y);
 
     CUDA_CHECK(cudaMemcpy(prev, curr, nbytes, cudaMemcpyDeviceToDevice));
 

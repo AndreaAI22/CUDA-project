@@ -19,4 +19,5 @@ void run_crop_kernel(const unsigned char* buffer_device_in, unsigned char* buffe
 void run_scale_kernel(const unsigned char* buffer_device_in, unsigned char* buffer_device_out, int out_width, int out_height, int in_width, int in_height, float scale_factor_x, float scale_factor_y);
 void run_rotate_kernel(const unsigned char* buffer_device_in, unsigned char* buffer_device_out, int image_width, int image_height, float c, float s);
 void run_optical_flow(const unsigned char* buffer_current_frame, unsigned char* buffer_output_frame, int width, int heigth);
+void run_optical_flow_new(bool* first_image, unsigned char* curr, unsigned char* prev, float* output, size_t nbytes, int num_point_grid_x, int num_point_grid_y, int margin, int step, int stride);
     

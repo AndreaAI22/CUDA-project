@@ -12,7 +12,7 @@ find_package(OpenCV REQUIRED)
 
 add_executable(app
   src/video_pipeline.cpp
-  src/optical_flow.cu
+  src/optical_flow_new.cu
   src/crop.cu
   src/edge_detection_sobel.cu
   src/scale.cu
