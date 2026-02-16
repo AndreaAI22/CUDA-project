@@ -3,6 +3,7 @@
 #include <cuda_runtime.h>
 #include <iostream>
 #include <math.h>
+#include <string.h>
 #include "cuda_common.h"
 
 int main(){
@@ -43,6 +44,7 @@ int main(){
     int num_point_grid_x, num_point_grid_y, step, margin;
     float* buff_out_optical_flow_host = nullptr;
     float* buff_out_optical_flow_device = nullptr;
+    float* buff_out_host_copy = nullptr;
     size_t size_buff_out;
     cv::Point arrow;
 
@@ -53,8 +55,8 @@ int main(){
     printf("Edge Detection = 1\nCrop = 2\nScale = 3\nRotate = 4\nOptical Flow = 5\n -->  ");
     std::cin >> code_operation;
 
-    //connection to the video source (in this case is webcam)
-    cv::VideoCapture cap("/home/andrea/cuda_project/street_car_video.mp4");
+    //connection to the video source (in this case is webcam
+    cv::VideoCapture cap("/home/andrea/cuda_project/città_inglese.mp4");
     if (cap.isOpened() == false){
         fprintf(stderr, "Error: the video source can't be open!\n");
         return 1;
@@ -176,12 +178,13 @@ int main(){
             nbytes_out = nbytes;
 
             step = 20;
-            margin = 5;
+            margin = 12;
 
             num_point_grid_x = floor((current_width - 2 * margin) / step) + 1;
             num_point_grid_y = floor((current_height - 2 * margin) / step) + 1;
 
-            size_buff_out = (num_point_grid_x * num_point_grid_y) * 2;
+            size_buff_out = (num_point_grid_x * num_point_grid_y) * 2; 
+            //*2 perchè per ogni punto della griglia cacoliamo il vettore di movimento fatto da 2 compoenti
 
             //allocazione per output optical flow
             buff_out_optical_flow_host = (float*) malloc(sizeof(float) * size_buff_out);
@@ -191,6 +194,20 @@ int main(){
             }
 
             CUDA_CHECK(cudaMalloc((void**)&buff_out_optical_flow_device, size_buff_out * sizeof(float)));
+
+            //buffer copia di buff_out_optical_flow per mantenere il risultato dell'optical flow del frame precedente per visualizzare meglio i vettori
+            //con inizializzazione  a 0
+            buff_out_host_copy = (float*) malloc(sizeof(float) * size_buff_out);
+            if(buff_out_host_copy == nullptr){
+                fprintf(stderr, "Error: malloc failed!\n");
+                return 1;
+            }
+            buff_out_host_copy = (float*) memset(buff_out_host_copy, 0, size_buff_out * sizeof(float));
+            if(buff_out_host_copy == nullptr){
+                fprintf(stderr, "Error: memset failed!\n");
+                return 1;
+            }
+
 
             break;
 
@@ -258,11 +275,8 @@ int main(){
                 break;
 
             case 5:
-                //buffer_device_in è curr mentre buffer_device_out è prev
+                //importante: buffer_device_in = curr mentre buffer_device_out = prev
                 run_optical_flow_new(&initial_frame_bool, buffer_device_in, buffer_device_out, buff_out_optical_flow_device, nbytes, num_point_grid_x, num_point_grid_y, margin, step, current_width);
-                //devo invocare run_optical_flow_new passandogli la variabile bool initial_frame però come puntatore
-
-                //run_optical_flow(buffer_device_in, buffer_device_out, current_width, current_height);
                 break;
             
             default:
@@ -278,37 +292,56 @@ int main(){
         if(code_operation != 5){
             CUDA_CHECK(cudaMemcpy(buffer_host_out, buffer_device_out, nbytes_out, cudaMemcpyDeviceToHost));
         }else{ //optical flow 
-            CUDA_CHECK(cudaMemcpy(buffer_host_out, buffer_device_in, nbytes_out, cudaMemcpyDeviceToHost)); //buffer_device_in ancora dovrebbe essere curr
+            CUDA_CHECK(cudaMemcpy(buffer_host_out, buffer_device_in, nbytes_out, cudaMemcpyDeviceToHost)); //disegno le frecce sul frame curr
             CUDA_CHECK(cudaMemcpy(buff_out_optical_flow_host, buff_out_optical_flow_device, size_buff_out*sizeof(float), cudaMemcpyDeviceToHost));
         }
 
         cv::Mat frame_output;
         frame_output = cv::Mat(current_height, current_width, CV_8UC1, buffer_host_out);
 
+        //per visualizzazione delle frecce indicative del movimento 
         if(code_operation == 5){
-            int origin_x, origin_y, end_x, end_y, idx;
-            float component_x, component_y;
-            cv::Point origin, end;
+
+            int origin_x, origin_y, idx_out;
+            float componente_x, componente_y, modulo_vettore_spostamento, arrowhead_x, arrowhead_y;
+            float fattore_scala = 20.0f, min_modulo = 0.15f, max_modulo = 10.0f, alpha = 0.25f;
+            cv::Point origin, arrowhead;
 
             for(int i=0; i < num_point_grid_x; i++){
                 for(int j=0; j < num_point_grid_y; j++){
-                    origin_x = margin + i * step;
-                    origin_y = margin + j * step;
-                    origin = cv::Point(origin_x, origin_y);
-                    idx = (i + j * num_point_grid_x) * 2;
-                    component_x = buff_out_optical_flow_host[idx];
-                    component_y = buff_out_optical_flow_host[idx+1];
-                    end_x = origin_x + (int)component_x;
-                    end_y = origin_y + (int)component_y;
-                    end = cv::Point(end_x, end_y);
                     
-                    cv::arrowedLine(frame_output, origin, end, cv::Scalar(255), 1);
+                    //coordinate punto griglia corrente , origine della freccia indicativa del movimento
+                    origin_x = margin + step * i;
+                    origin_y = margin + step * j;
+                    origin = cv::Point(origin_x, origin_y);
+
+                    //compoente x e y del vettore spostamento
+                    idx_out = (i + j * num_point_grid_x) * 2;
+                    componente_x = alpha * buff_out_optical_flow_host[idx_out] + (1 - alpha) * buff_out_host_copy[idx_out];
+                    componente_y = alpha * buff_out_optical_flow_host[idx_out + 1] + (1 - alpha) *buff_out_host_copy[idx_out + 1];
+                    if(isfinite(componente_x) == false || isfinite(componente_y) == false) continue;
+
+
+                    buff_out_host_copy[idx_out] = componente_x;
+                    buff_out_host_copy[idx_out + 1] = componente_y;
+
+                    modulo_vettore_spostamento = sqrt(componente_x * componente_x + componente_y * componente_y);
+                    if(isfinite(modulo_vettore_spostamento) == false) continue;
+
+                    //per eliminare vettori troppo piccoli che quasi sempre sono rumore o troppo grandi dovuta a stima sbagliata
+                    if(modulo_vettore_spostamento < min_modulo || modulo_vettore_spostamento > max_modulo) continue;
+            
+                    //normalizzazione per avere frecce tutte della stessa dimensione
+                    arrowhead_x = origin_x + (componente_x / modulo_vettore_spostamento) * fattore_scala;
+                    arrowhead_y = origin_y + (componente_y / modulo_vettore_spostamento) * fattore_scala; 
+                    arrowhead = cv::Point((int)arrowhead_x, (int)arrowhead_y);
+
+                    cv::arrowedLine(frame_output, origin, arrowhead, cv::Scalar(255), 2);
 
                 }
             }
         }
 
-        
         //display to screen
         cv::imshow("Result ", frame_output);
 
@@ -336,6 +369,12 @@ int main(){
     CUDA_CHECK(cudaFree(buffer_device_in));
     CUDA_CHECK(cudaFree(buffer_device_out));
     free(buffer_host_out);
+
+    if(code_operation == 5){
+        free(buff_out_host_copy);
+        free(buff_out_optical_flow_host);
+        CUDA_CHECK(cudaFree(buff_out_optical_flow_device));
+    }
 
     return 0;
 }
