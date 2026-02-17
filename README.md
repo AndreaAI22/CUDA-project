@@ -1,86 +1,91 @@
+## CUDA Video Processing Pipeline
 
-# CUDA Video Processing Pipeline
+Real-time video processing pipeline based on **CUDA** and **OpenCV**. The program captures a live stream (webcam or video file), converts frames to **grayscale**, and applies one GPU-accelerated operation, displaying the processed output in a window.
 
-Pipeline di elaborazione video **real-time** basata su **CUDA** e **OpenCV**. Il programma acquisisce uno stream da webcam, lo converte in **grayscale** e applica una delle operazioni implementate su GPU, mostrando a schermo lo stream processato.
+### Available operations (basic versions)
 
-Operazioni disponibili (versioni base):
-
-* **Edge Detection (Sobel + soglia)**
-* **Crop (ROI)**
+* **Edge Detection** (Sobel + threshold)
+* **Crop** (ROI)
 * **Scale**
 * **Rotate**
-* **Optical Flow** (tramite libreria / implementazione presente nel progetto)
+* **Optical Flow** (**implemented from scratch in CUDA using the Lucas–Kanade sparse method**) and visualized with motion vectors (arrows)
 
 ---
 
-## ⚙️ Utilizzo del progetto
+## ⚙️ Project usage
 
-Il progetto è composto da:
+The project consists of:
 
-* **Pipeline principale (C++/OpenCV + CUDA)**: acquisizione video, trasferimenti Host↔Device, lancio kernel e visualizzazione.
-* **Kernel CUDA**: implementazioni delle operazioni (file `.cu`) richiamate dal main.
-
-### Funzionamento
-
-All’avvio il programma:
-
-1. Apre la webcam tramite OpenCV.
-2. Legge un frame per determinare risoluzione e formato.
-3. Converte i frame in **grayscale** (CV_8UC1).
-4. Alloca i buffer su GPU e un buffer di output su CPU.
-5. Entra nel loop real-time:
-
-   * acquisisce frame
-   * converte in grayscale
-   * copia Host→Device
-   * esegue l’operazione selezionata (kernel CUDA / funzione dedicata)
-   * copia Device→Host
-   * mostra l’output con `cv::imshow`
+* **Main pipeline (C++/OpenCV + CUDA):** video capture, Host↔Device transfers, kernel launches, and visualization.
+* **CUDA kernels (.cu files):** GPU implementations of the operations called from the main program.
 
 ---
 
-## 🧰 Comandi principali
+## How it works
 
-### 🔨 Compilazione (un solo comando)
+At startup, the program:
 
-Dalla directory principale del progetto:
+1. Opens the video source via OpenCV.
+2. Reads one frame to determine resolution and format.
+3. Converts frames to grayscale (**CV_8UC1**).
+4. Allocates GPU input/output buffers and a CPU output buffer.
+5. Enters the real-time loop:
+
+   * capture frame
+   * convert to grayscale
+   * copy Host → Device
+   * run the selected CUDA operation
+   * copy Device → Host
+   * display output using `cv::imshow`
+
+---
+
+## 🧰 Main commands
+
+### 🔨 Build (single command)
+
+From the project root directory:
 
 ```bash
 make
 ```
 
-Questo comando:
+This command:
 
-* configura CMake (cartella `build/`)
-* compila l’eseguibile `app`
+* configures CMake (creates `build/`)
+* compiles the executable `app`
 
-> Output atteso: `build/app`
+Expected output:
 
-### ▶️ Esecuzione
+* `build/app`
+
+### ▶️ Run
 
 ```bash
 ./build/app
 ```
 
-All’avvio ti verrà chiesto di selezionare l’operazione:
+At startup, select the operation:
 
 * `1` → Edge Detection (Sobel)
 * `2` → Crop
 * `3` → Scale
 * `4` → Rotate
-* `5` → Optical Flow
-
-### ⌨️ Controlli runtime
-
-* **ESC**: termina il programma
-* (Solo Edge Detection) **w/s**: aumenta/diminuisce la soglia (threshold) durante l’esecuzione
-  *(Nota: per leggere i tasti devi cliccare sulla finestra OpenCV “Result”)*
+* `5` → Optical Flow (Lucas–Kanade, CUDA)
 
 ---
 
-## 🧹 Pulizia dei file generati
+## ⌨️ Runtime controls
 
-Per rimuovere la cartella di build e i file generati:
+* **ESC**: quit the program
+* **Edge Detection only**: `w/s` (or `u/d`, depending on your version) to increase/decrease the threshold during execution
+  *(Note: to capture keyboard input you must click on the OpenCV output window “Result” to give it focus.)*
+
+---
+
+## 🧹 Clean generated files
+
+To remove the build folder and generated files:
 
 ```bash
 make clean
@@ -88,22 +93,21 @@ make clean
 
 ---
 
-## ✅ Dipendenze
+## ✅ Dependencies
 
 * **CUDA Toolkit** (nvcc)
-* **OpenCV 4** (installato e linkato via CMake)
+* **OpenCV 4** (linked via CMake)
 
-Nel progetto `CMakeLists.txt` è impostato:
+In `CMakeLists.txt`:
 
 * `OpenCV_DIR="/usr/local/lib/cmake/opencv4"`
 
-Se OpenCV è installato in un path diverso, aggiorna `OpenCV_DIR` nel `CMakeLists.txt`.
+If OpenCV is installed elsewhere, update `OpenCV_DIR` accordingly.
 
 ---
 
-## 🔚 Terminazione
+## 🔚 Termination
 
-* Per uscire dall’app: premi **ESC** sulla finestra OpenCV.
-* Se la tastiera non viene letta, clicca prima sulla finestra “Result” (focus).
-
+Press **ESC** while the OpenCV window is active to exit.
+If keyboard input is not detected, click the “Result” window first (focus issue).
 
