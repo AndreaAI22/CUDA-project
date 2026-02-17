@@ -276,7 +276,7 @@ int main(){
 
             case 5:
                 //importante: buffer_device_in = curr mentre buffer_device_out = prev
-                run_optical_flow_new(&initial_frame_bool, buffer_device_in, buffer_device_out, buff_out_optical_flow_device, nbytes, num_point_grid_x, num_point_grid_y, margin, step, current_width);
+                run_optical_flow_new(&initial_frame_bool, buffer_device_in, buffer_device_out, buff_out_optical_flow_device, nbytes, num_point_grid_x, num_point_grid_y, margin, step, w);
                 break;
             
             default:
@@ -321,7 +321,6 @@ int main(){
                     componente_y = alpha * buff_out_optical_flow_host[idx_out + 1] + (1 - alpha) *buff_out_host_copy[idx_out + 1];
                     if(isfinite(componente_x) == false || isfinite(componente_y) == false) continue;
 
-
                     buff_out_host_copy[idx_out] = componente_x;
                     buff_out_host_copy[idx_out + 1] = componente_y;
 
@@ -331,7 +330,7 @@ int main(){
                     //per eliminare vettori troppo piccoli che quasi sempre sono rumore o troppo grandi dovuta a stima sbagliata
                     if(modulo_vettore_spostamento < min_modulo || modulo_vettore_spostamento > max_modulo) continue;
             
-                    //normalizzazione per avere frecce tutte della stessa dimensione
+                    //normalizzazione per avere frecce tutte della stessa dimensione, per una visualizzazione migliore
                     arrowhead_x = origin_x + (componente_x / modulo_vettore_spostamento) * fattore_scala;
                     arrowhead_y = origin_y + (componente_y / modulo_vettore_spostamento) * fattore_scala; 
                     arrowhead = cv::Point((int)arrowhead_x, (int)arrowhead_y);
