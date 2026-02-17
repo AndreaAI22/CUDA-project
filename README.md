@@ -62,7 +62,7 @@ Expected output:
 ### ▶️ Run
 
 ```bash
-./build/app
+Run from build/: cd build && ./app
 ```
 
 At startup, select the operation:

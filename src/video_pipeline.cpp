@@ -55,8 +55,8 @@ int main(){
     printf("Edge Detection = 1\nCrop = 2\nScale = 3\nRotate = 4\nOptical Flow = 5\n -->  ");
     std::cin >> code_operation;
 
-    //connection to the video source (in this case is webcam
-    cv::VideoCapture cap("/home/andrea/cuda_project/città_inglese.mp4");
+    //connection to the video source (relative path)
+    cv::VideoCapture cap("../videos/città_inglese.mp4");
     if (cap.isOpened() == false){
         fprintf(stderr, "Error: the video source can't be open!\n");
         return 1;
